@@ -11,7 +11,7 @@ void DataBase::saveToFile() {
     cJSON *wifiObject = NULL;
     cJSON *rtcObject = NULL;
     cJSON *ntpObject = NULL;
-    cJSON *ezdataObject = NULL;
+//&&&    cJSON *ezdataObject = NULL;
     cJSON *buzzerObject = NULL;
     File configfile;
     char *str = NULL;
@@ -53,12 +53,15 @@ void DataBase::saveToFile() {
     cJSON_AddStringToObject(ntpObject, "server_1", ntp.ntpServer1.c_str());
     cJSON_AddStringToObject(ntpObject, "tz", ntp.tz.c_str());
 
+//&&&
+#if 0
     ezdataObject = cJSON_CreateObject();
     if (ezdataObject == NULL) {
         goto OUT;
     }
     cJSON_AddItemToObject(configObject, "ezdata2", ezdataObject);
     cJSON_AddStringToObject(ezdataObject, "dev_token", ezdata2.devToken.c_str());
+#endif
 
     buzzerObject = cJSON_CreateObject();
     if (buzzerObject == NULL) {
@@ -97,8 +100,8 @@ void DataBase::dump() {
     log_d("    server_1: %s", ntp.ntpServer1.c_str());
     log_d("    tz: %s", ntp.tz.c_str());
 
-    log_d("  ezdata2:");
-    log_d("    dev_token: %s", ezdata2.devToken.c_str());
+//&&&    log_d("  ezdata2:");
+//&&&    log_d("    dev_token: %s", ezdata2.devToken.c_str());
 
     log_d("  buzzer:");
     log_d("    onoff: %d", buzzer.onoff);
@@ -152,9 +155,12 @@ void DataBase::loadFromFile(void) {
     ntp.ntpServer1 = String(server1Object->valuestring);
     ntp.tz = String(tzObject->valuestring);
 
+//&&&
+#if 0
     cJSON *ezdataObject = cJSON_GetObjectItem(configObject, "ezdata2");
     cJSON *tokenObject = cJSON_GetObjectItem(ezdataObject, "dev_token");
     ezdata2.devToken = String(tokenObject->valuestring);
+#endif
 
     cJSON *buzzerObject = cJSON_GetObjectItem(configObject, "buzzer");
     if (cJSON_IsTrue(cJSON_GetObjectItem(buzzerObject, "mute"))) {

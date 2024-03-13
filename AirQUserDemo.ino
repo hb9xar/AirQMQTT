@@ -15,7 +15,7 @@
 #include <cJSON.h>
 #include <Preferences.h>
 
-#include "EzData.hpp"
+//&&&#include "EzData.hpp"
 #include "config.h"
 #include "misc.h"
 #include "DataBase.hpp"
@@ -74,7 +74,7 @@ typedef enum RunMode_t {
     E_RUN_MODE_MAIN,
     E_RUN_MODE_SETTING,
     E_RUN_MODE_APSETTING,
-    E_RUN_MODE_EZDATA,
+//&&&    E_RUN_MODE_EZDATA,
 } RunMode_t;
 
 
@@ -131,11 +131,14 @@ typedef struct WiFiStatusEvent_t {
     WiFiEventInfo_t info;
 } WiFiStatusEvent_t;
 
+//&&&
+#if 0
 typedef enum EzDataState_t {
     E_EZDATA_STATE_INIT = 0,
     E_EZDATA_STATE_SUCCESS,
     E_EZDATA_STATE_FAILURE,
 } EzDataState_t;
+#endif
 
 
 WakeupType_t wakeupType = E_WAKEUP_TYPE_UNKNOWN;
@@ -151,9 +154,9 @@ SensirionI2CSen5x sen5x;
 I2C_BM8563 bm8563(I2C_BM8563_DEFAULT_ADDRESS, Wire);
 Sensor sensor(scd4x, sen5x, bm8563);
 
-EzData ezdataHanlder(db.ezdata2.devToken, "raw");
-bool ezdataStatus = false;
-EzDataState_t ezdataState = E_EZDATA_STATE_INIT;
+//&&&EzData ezdataHanlder(db.ezdata2.devToken, "raw");
+//&&&bool ezdataStatus = false;
+//&&&EzDataState_t ezdataState = E_EZDATA_STATE_INIT;
 
 Preferences preferences;
 uint32_t successCounter = 0;
@@ -322,10 +325,10 @@ void setup() {
 
     btnA.attachClick(btnAClickEvent);
     btnA.attachLongPressStart(btnALongPressStartEvent);
-    btnA.setPressTicks(5000);
+    btnA.setPressMs(5000);
     btnB.attachClick(btnBClickEvent);
     btnB.attachLongPressStart(btnBLongPressStartEvent);
-    btnB.setPressTicks(5000);
+    btnB.setPressMs(5000);
     // btnPower.attachClick(btnPowerClickEvent);
     buttonEventQueue = xQueueCreate(16, sizeof(ButtonEvent_t));
 
@@ -362,15 +365,18 @@ void loop() {
         }
         break;
 
+//&&&
+#if 0
         case E_RUN_MODE_EZDATA: {
             ezdataApp(&buttonEvent);
         }
         break;
+#endif
 
         default: break;
     }
     networkStatusUpdateServiceTask();
-    ezdataServiceTask();
+//&&&    ezdataServiceTask();
     countdownServiceTask();
     // shutdownServiceTask(&buttonEvent);
     buttonEvent.id = E_BUTTON_NONE;
@@ -438,8 +444,8 @@ void mainApp(ButtonEvent_t *buttonEvent) {
     static int64_t lastMillisecond = esp_timer_get_time() / 1000;
     static int64_t lastCountDownUpdate = lastMillisecond;
     static int64_t lastCountDown = db.rtc.sleepInterval;
-    static bool runingEzdataUpload = false;
-    static int ezdataUploadCount = EZDATA_UPLOAD_RETRY_COUNT;
+//&&&    static bool runingEzdataUpload = false;
+//&&&    static int ezdataUploadCount = EZDATA_UPLOAD_RETRY_COUNT;
 
     int64_t currentMillisecond = esp_timer_get_time() / 1000;
 
@@ -454,7 +460,8 @@ void mainApp(ButtonEvent_t *buttonEvent) {
         )
     ) {
         runMode = (buttonEvent->id == E_BUTTON_A)
-                  ? E_RUN_MODE_EZDATA
+//&&&                  ? E_RUN_MODE_EZDATA
+                  ? E_RUN_MODE_SETTING
                   : E_RUN_MODE_SETTING;
         refresh = true;
         return ;
@@ -490,6 +497,8 @@ void mainApp(ButtonEvent_t *buttonEvent) {
 
         statusView.load();
         lastMillisecond = currentMillisecond;
+//&&&
+#if 0
         if (
             lastCountDown == db.rtc.sleepInterval
             && (
@@ -499,6 +508,7 @@ void mainApp(ButtonEvent_t *buttonEvent) {
             ezdataUploadCount = EZDATA_UPLOAD_RETRY_COUNT;
             runingEzdataUpload = true;
         }
+#endif
     }
 
     if (currentMillisecond - lastCountDownUpdate > 1000) {
@@ -511,6 +521,8 @@ void mainApp(ButtonEvent_t *buttonEvent) {
         lastCountDownUpdate = currentMillisecond;
     }
 
+//&&&
+#if 0
     if (WiFi.isConnected() && runingEzdataUpload && ezdataUploadCount-- > 0) {
         ezdataHanlder.setDeviceToken(db.ezdata2.devToken);
         BUTTON_TONE();
@@ -531,11 +543,14 @@ void mainApp(ButtonEvent_t *buttonEvent) {
             FAIL_TONE();
         }
     }
+#endif
 
 }
 
 
-void ezdataApp(ButtonEvent_t *buttonEvent) {
+//&&&
+#if 0
+//&&&void ezdataApp(ButtonEvent_t *buttonEvent) {
     static bool refresh = true;
     static String devToken = db.ezdata2.devToken;
 
@@ -559,7 +574,7 @@ void ezdataApp(ButtonEvent_t *buttonEvent) {
         refresh = false;
     }
 }
-
+#endif
 
 void settingApp(ButtonEvent_t *buttonEvent) {
     static bool refresh = true;
@@ -791,7 +806,9 @@ void apSettingApp(ButtonEvent_t *buttonEvent) {
     }
 }
 
-void ezdataServiceTask() {
+//&&&
+#if 0
+//&&&void ezdataServiceTask() {
     static int64_t lastMillisecond = esp_timer_get_time() / 1000;
 
     if (
@@ -821,6 +838,7 @@ void ezdataServiceTask() {
     db.saveToFile();
 
 }
+#endif
 
 
 void networkStatusUpdateServiceTask() {
@@ -1099,8 +1117,9 @@ void onWiFiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
     }
 }
 
-
-bool uploadSensorRawData(EzData &ezdataHanlder) {
+//&&&
+#if 0
+//&&&bool uploadSensorRawData(EzData &ezdataHanlder) {
     bool ret = false;
     cJSON *rspObject = NULL;
     cJSON *sen55Object = NULL;
@@ -1171,6 +1190,7 @@ OUT:
 OUT1:
     return ret;
 }
+#endif
 
 
 /**

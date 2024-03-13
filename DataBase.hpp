@@ -26,11 +26,11 @@ public:
         String ntpServer1;
         String tz;
     } ntp;
-    struct {
-        String devToken;
-        String loginName;
-        String password;
-    } ezdata2;
+//&&&    struct {
+//&&&        String devToken;
+//&&&        String loginName;
+//&&&        String password;
+//&&&    } ezdata2;
     struct {
         bool onoff;
     } buzzer;

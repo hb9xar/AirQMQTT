@@ -21,7 +21,7 @@ extern SensirionI2CSen5x sen5x;
 static void postWiFiConnect();
 static void getWiFiStatus();
 static void getWiFiList();
-static void postEzDataConfig();
+//&&&static void postEzDataConfig();
 static void getStatus();
 static void getInfo();
 static void getConfig();
@@ -41,7 +41,7 @@ void appWebServer(void) {
     server.on("/api/v1/wifi_connect", HTTP_POST, postWiFiConnect);
     server.on("/api/v1/wifi_status", HTTP_GET, getWiFiStatus);
     server.on("/api/v1/wifi_list", HTTP_GET, getWiFiList);
-    server.on("/api/v1/ezdata_config", HTTP_POST, postEzDataConfig);
+//&&&    server.on("/api/v1/ezdata_config", HTTP_POST, postEzDataConfig);
     server.on("/api/v1/status", HTTP_GET, getStatus);
     server.on("/api/v1/info", HTTP_GET, getInfo);
     server.on("/api/v1/config", HTTP_GET, getConfig);
@@ -184,6 +184,8 @@ OUT:
 }
 
 
+//&&&
+#if 0
 static void postEzDataConfig() {
     cJSON *reqObject = NULL;
     cJSON *ezdataObject = NULL;
@@ -214,6 +216,7 @@ static void postEzDataConfig() {
     cJSON_Delete(rspObject);
     return;
 }
+#endif
 
 
 static void getStatus() {
@@ -392,7 +395,7 @@ static void postConfig() {
     cJSON *wifiObject = NULL;
     cJSON *rtcObject = NULL;
     cJSON *ntpObject = NULL;
-    cJSON *ezdataObject = NULL;
+//&&&    cJSON *ezdataObject = NULL;
     cJSON *buzzerObject = NULL;
     cJSON *nicknameObject = NULL;
     bool flag = false;
@@ -448,12 +451,15 @@ static void postConfig() {
         }
     }
 
+//&&&
+#if 0
     ezdataObject = cJSON_GetObjectItem(configObject, "ezdata2");
     if (ezdataObject) {
         cJSON *tokenObject = cJSON_GetObjectItem(ezdataObject, "dev_token");
         db.ezdata2.devToken = tokenObject->valuestring;
         db.factoryState = false;
     }
+#endif
 
     buzzerObject = cJSON_GetObjectItem(configObject, "buzzer");
     if (buzzerObject) {
