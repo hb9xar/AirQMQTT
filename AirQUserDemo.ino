@@ -13,9 +13,10 @@
 #include <SensirionI2CSen5x.h>
 #include <OneButton.h>
 #include <cJSON.h>
+//&&& dont use NVS and write every minute to it. wears out flash quickly...
 #include <Preferences.h>
 
-//&&&#include "EzData.hpp"
+#include "MqData.hpp"
 #include "config.h"
 #include "misc.h"
 #include "DataBase.hpp"
@@ -157,6 +158,7 @@ Sensor sensor(scd4x, sen5x, bm8563);
 //&&&EzData ezdataHanlder(db.ezdata2.devToken, "raw");
 //&&&bool ezdataStatus = false;
 //&&&EzDataState_t ezdataState = E_EZDATA_STATE_INIT;
+MqData mqdata;
 
 Preferences preferences;
 uint32_t successCounter = 0;
@@ -193,6 +195,9 @@ void splitLongString(String &text, int32_t maxWidth, const lgfx::IFont* font);
 void setup() {
     Serial.begin(115200);
 
+    // for debugging: give USB some time to detect the serial port
+    delay(1000);
+
     log_i("Project name: AirQ demo");
     log_i("Build: %s %s", __DATE__, __TIME__);
     log_i("Version: %s", APP_VERSION);
@@ -228,6 +233,7 @@ void setup() {
     }
     BUTTON_TONE();
 
+//&&& Preferences to be removed...
     log_i("NVS init");
     preferences.begin("airq", false);
     successCounter = preferences.getUInt("OK", 0);
@@ -240,10 +246,17 @@ void setup() {
 
     statusView.begin();
 
+    /* initialize network (WiFi) */
     networkStatusMsgEventQueue = xQueueCreate(16, sizeof(NetworkStatusMsgEvent_t));
     wifiStatusEventQueue = xQueueCreate(8, sizeof(WiFiStatusEvent_t));
     wifiAPSTASetup();
     appWebServer();
+
+    /* Initialize MQTT module */
+    log_i("MqData init");
+    mqdata.setConfig("username", "password", "mqtt.segv.xyz", 8883);
+
+
 
     log_i("I2C init");
     pinMode(GROVE_SDA, OUTPUT);
@@ -319,6 +332,7 @@ void setup() {
     } while (!isDataReady);
 
     if (db.factoryState || wakeupType == E_WAKEUP_TYPE_USER) {
+        log_i("in factor state -> E_RUN_MODE_FACTORY");
         FAIL_TONE();
         runMode = E_RUN_MODE_FACTORY;
     }
@@ -333,10 +347,13 @@ void setup() {
     buttonEventQueue = xQueueCreate(16, sizeof(ButtonEvent_t));
 
     xTaskCreatePinnedToCore(buttonTask, "Button Task", 4096, NULL, 5, NULL, APP_CPU_NUM);
+
+    log_d("leaving setup()");
 }
 
 
 void loop() {
+    log_d("entering loop()");
 
     ButtonEvent_t buttonEvent = {
         .id = E_BUTTON_NONE,
@@ -365,18 +382,10 @@ void loop() {
         }
         break;
 
-//&&&
-#if 0
-        case E_RUN_MODE_EZDATA: {
-            ezdataApp(&buttonEvent);
-        }
-        break;
-#endif
-
         default: break;
     }
     networkStatusUpdateServiceTask();
-//&&&    ezdataServiceTask();
+    mqdataServiceTask();
     countdownServiceTask();
     // shutdownServiceTask(&buttonEvent);
     buttonEvent.id = E_BUTTON_NONE;
@@ -392,6 +401,8 @@ void factoryApp(ButtonEvent_t *buttonEvent) {
     static int64_t lastCountDown = 5;
 
     int64_t currentMillisecond = esp_timer_get_time() / 1000;
+
+    log_i("entering factoryApp()");
 
     if (refresh) {
         switch (factoryState) {
@@ -444,8 +455,8 @@ void mainApp(ButtonEvent_t *buttonEvent) {
     static int64_t lastMillisecond = esp_timer_get_time() / 1000;
     static int64_t lastCountDownUpdate = lastMillisecond;
     static int64_t lastCountDown = db.rtc.sleepInterval;
-//&&&    static bool runingEzdataUpload = false;
-//&&&    static int ezdataUploadCount = EZDATA_UPLOAD_RETRY_COUNT;
+    static bool runingMqDataUpload = false;
+    static int  mqDataUploadCount = MQDATA_UPLOAD_RETRY_COUNT;
 
     int64_t currentMillisecond = esp_timer_get_time() / 1000;
 
@@ -497,18 +508,18 @@ void mainApp(ButtonEvent_t *buttonEvent) {
 
         statusView.load();
         lastMillisecond = currentMillisecond;
-//&&&
-#if 0
+
+        /* initiate data upload */
         if (
             lastCountDown == db.rtc.sleepInterval
-            && (
-                WiFi.isConnected() && db.ezdata2.devToken
-            )
+            && WiFi.isConnected()
+//            && (
+//                WiFi.isConnected() && db.ezdata2.devToken
+//            )
         ) {
-            ezdataUploadCount = EZDATA_UPLOAD_RETRY_COUNT;
-            runingEzdataUpload = true;
+            mqDataUploadCount = MQDATA_UPLOAD_RETRY_COUNT;
+            runingMqDataUpload = true;
         }
-#endif
     }
 
     if (currentMillisecond - lastCountDownUpdate > 1000) {
@@ -528,6 +539,7 @@ void mainApp(ButtonEvent_t *buttonEvent) {
         BUTTON_TONE();
         if (uploadSensorRawData(ezdataHanlder)) {
             successCounter += 1;
+//&&& Preferences to be removed...
             preferences.putUInt("OK", successCounter);
             String msg = "OK:" + String(successCounter);
             statusView.displayNetworkStatus("Upload", msg.c_str());
@@ -537,6 +549,7 @@ void mainApp(ButtonEvent_t *buttonEvent) {
             ezdataStatus = true;
         } else {
             failCounter += 1;
+//&&& Preferences to be removed...
             preferences.putUInt("NG", failCounter);
             String msg = "NG:" + String(failCounter);
             statusView.displayNetworkStatus("Upload", msg.c_str());
@@ -545,36 +558,30 @@ void mainApp(ButtonEvent_t *buttonEvent) {
     }
 #endif
 
-}
-
-
-//&&&
-#if 0
-//&&&void ezdataApp(ButtonEvent_t *buttonEvent) {
-    static bool refresh = true;
-    static String devToken = db.ezdata2.devToken;
-
-    String url = "https://airq.m5stack.com/" + mac;
-
-    if (buttonEvent->id == E_BUTTON_A) {
-        runMode = E_RUN_MODE_MAIN;
-        refresh = true;
-        return ;
-    }
-
-    if (refresh || devToken != db.ezdata2.devToken) {
-        lcd.clear(TFT_BLACK);
-        lcd.waitDisplay();
-        lcd.clear(TFT_WHITE);
-        lcd.waitDisplay();
-        lcd.drawJpgFile(FILESYSTEM, "/ezdata.jpg", 0, 0);
-        lcd.waitDisplay();
-        lcd.qrcode(url, 35, 35, 130);
-        lcd.waitDisplay();
-        refresh = false;
+    if (WiFi.isConnected() && runingMqDataUpload && mqDataUploadCount-- > 0) {
+        log_d("trigering MQTT data publish");
+        BUTTON_TONE();
+        if (/*&&& uploadSensorRawData()*/ false) {
+            log_i("MQTT publish success");
+            successCounter += 1;
+//&&& Preferences to be removed...
+            preferences.putUInt("OK", successCounter);
+            String msg = "OK:" + String(successCounter);
+            statusView.displayNetworkStatus("Upload", msg.c_str());
+            SUCCESS_TONE();
+            runingMqDataUpload = false;
+        } else {
+            log_w("MQTT publish failed");
+            failCounter += 1;
+//&&& Preferences to be removed...
+            preferences.putUInt("NG", failCounter);
+            String msg = "NG:" + String(failCounter);
+            statusView.displayNetworkStatus("Upload", msg.c_str());
+            FAIL_TONE();
+        }
     }
 }
-#endif
+
 
 void settingApp(ButtonEvent_t *buttonEvent) {
     static bool refresh = true;
@@ -806,39 +813,38 @@ void apSettingApp(ButtonEvent_t *buttonEvent) {
     }
 }
 
-//&&&
-#if 0
-//&&&void ezdataServiceTask() {
+
+void mqdataServiceTask() {
     static int64_t lastMillisecond = esp_timer_get_time() / 1000;
 
     if (
         WiFi.isConnected() == false
-        || ezdataStatus == true
+//        || ezdataStatus == true
         || (esp_timer_get_time() / 1000) - lastMillisecond < 1000
     ) {
         return ;
     }
 
-    if (registeredDevice(mac, db.ezdata2.loginName, db.ezdata2.password, db.ezdata2.devToken)) {
-        log_w("registeredDevice success");
-    } else {
-        log_w("registeredDevice error");
-        log_i("Login ...");
-        db.ezdata2.loginName = "USER_" + mac;
-        db.ezdata2.password = "12345678";
-        if (login(db.ezdata2.loginName, db.ezdata2.password, db.ezdata2.devToken)) {
-            log_w("login success");
-        } else {
-            log_w("login error");
-        }
-    }
+        log_i("mqdataServiceTask() ...");
+//    if (registeredDevice(mac, db.ezdata2.loginName, db.ezdata2.password, db.ezdata2.devToken)) {
+//        log_w("registeredDevice success");
+//    } else {
+//        log_w("registeredDevice error");
+//        log_i("Login ...");
+//        db.ezdata2.loginName = "USER_" + mac;
+//        db.ezdata2.password = "12345678";
+//        if (login(db.ezdata2.loginName, db.ezdata2.password, db.ezdata2.devToken)) {
+//            log_w("login success");
+//        } else {
+//            log_w("login error");
+//        }
+//    }
 
-    ezdataStatus = true;
+//    ezdataStatus = true;
     lastMillisecond = esp_timer_get_time() / 1000;
-    db.saveToFile();
+//    db.saveToFile();
 
 }
-#endif
 
 
 void networkStatusUpdateServiceTask() {

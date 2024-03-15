@@ -33,11 +33,11 @@
 #define FORMAT_FILESYSTEM false
 #define FILESYSTEM LittleFS
 
-/* Number of retries for ezdata failed data upload
+/* Number of retries for failed data upload
  *
- * ezdata上传数据失败的重试次数
+ * 
  */
-#define EZDATA_UPLOAD_RETRY_COUNT 3
+#define MQDATA_UPLOAD_RETRY_COUNT 3
 
 /* AirQ shutdown timeout in wake state, unit is seconds
  *
