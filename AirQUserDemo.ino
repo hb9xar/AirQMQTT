@@ -254,7 +254,12 @@ void setup() {
 
     /* Initialize MQTT module */
     log_i("MqData init");
-    mqdata.setConfig("username", "password", "mqtt.segv.xyz", 8883);
+    //mqdata.setConfig("username", "password", "mqtt.segv.xyz", 8883, "m5/AirQ", mac.c_str());
+    //mqdata.setConfig("rw", "readwrite", "test.mosquitto.org", 1883, "m5/AirQ", mac.c_str());
+    //mqdata.setConfig("rw", "readwrite", "91.121.93.94", 1884, "m5/AirQ", mac.c_str());
+    mqdata.setConfig(db.mqdata.username.c_str(), db.mqdata.password.c_str(), 
+                     db.mqdata.server.c_str(), db.mqdata.port, 
+                     db.mqdata.topicPrefix.c_str(), mac.c_str());
 
 
 
@@ -268,6 +273,19 @@ void setup() {
     bm8563.clearIRQ();
 
     wakeupType = getDeviceWakeupType();
+
+    //&&&
+    // ?? should I wait here for WiFi to be connected and IP assigned?
+    uint8_t count=0;
+    while ((WiFi.isConnected() != true) && (count++ < 20)) {
+        log_i("WiFi not yet conected, waiting (%i)...", count);
+        delay(1000);
+    }
+    if (WiFi.isConnected() == true) {
+        log_i("WiFi is connected (count=%i)", count);
+    } else {
+        log_i("WiFi NOT CONNECTED (count=%i)", count);
+    }
 
     log_i("NTP init");
     sntp_servermode_dhcp(1);
@@ -559,9 +577,9 @@ void mainApp(ButtonEvent_t *buttonEvent) {
 #endif
 
     if (WiFi.isConnected() && runingMqDataUpload && mqDataUploadCount-- > 0) {
-        log_d("trigering MQTT data publish");
+        log_d("triggering MQTT data publish");
         BUTTON_TONE();
-        if (/*&&& uploadSensorRawData()*/ false) {
+        if (uploadSensorRawData()) {
             log_i("MQTT publish success");
             successCounter += 1;
 //&&& Preferences to be removed...
@@ -846,7 +864,6 @@ void mqdataServiceTask() {
 
 }
 
-
 void networkStatusUpdateServiceTask() {
 
     NetworkStatusMsgEvent_t networkStatusMsgEvent;
@@ -1123,18 +1140,22 @@ void onWiFiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
     }
 }
 
-//&&&
-#if 0
-//&&&bool uploadSensorRawData(EzData &ezdataHanlder) {
+
+bool uploadSensorRawData(void) {
     bool ret = false;
     cJSON *rspObject = NULL;
     cJSON *sen55Object = NULL;
     cJSON *scd40Object = NULL;
     cJSON *rtcObject = NULL;
     cJSON *profileObject = NULL;
+    cJSON *datetimeObject = NULL;
+
     char *buf = NULL;
     String data;
 
+    time_t t = 0;
+
+    /* build JSON structure */
     rspObject = cJSON_CreateObject();
     if (rspObject == NULL) {
         goto OUT1;
@@ -1164,6 +1185,14 @@ void onWiFiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
     }
     cJSON_AddItemToObject(rspObject, "profile", profileObject);
 
+    datetimeObject = cJSON_CreateObject();
+    if (datetimeObject == NULL) {
+        goto OUT;
+    }
+    cJSON_AddItemToObject(rspObject, "datetime", datetimeObject);
+
+
+    /* fill data into structure */
     cJSON_AddNumberToObject(sen55Object, "pm1.0", sensor.sen55.massConcentrationPm1p0);
     cJSON_AddNumberToObject(sen55Object, "pm2.5", sensor.sen55.massConcentrationPm2p5);
     cJSON_AddNumberToObject(sen55Object, "pm4.0", sensor.sen55.massConcentrationPm4p0);
@@ -1179,24 +1208,26 @@ void onWiFiDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
 
     cJSON_AddNumberToObject(rtcObject, "sleep_interval", db.rtc.sleepInterval);
     cJSON_AddStringToObject(profileObject, "nickname", db.nickname.c_str());
+    cJSON_AddStringToObject(profileObject, "mac", mac.c_str());
+
+    t = bm8563ToTime(bm8563);
+    cJSON_AddNumberToObject(datetimeObject, "ts", t);
 
     buf = cJSON_PrintUnformatted(rspObject);
     data = buf;
     data.replace("\"", "\\\"");
-    if (ezdataHanlder.set(data)) {
-        log_i("ok");
-        ret = true;
-    } else {
-        log_w("error");
-        ret = false;
-    }
+
+    // publish to MQTT
+    mqdata.connect();
+    ret=mqdata.publish(buf);
+    mqdata.disconnect();
+
 OUT:
     free(buf);
     cJSON_Delete(rspObject);
 OUT1:
     return ret;
 }
-#endif
 
 
 /**

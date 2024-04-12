@@ -1,8 +1,8 @@
 {
     "config": {
-        "factory_state": true,
+        "factory_state": false,
         "wifi": {
-            "ssid": "",
+            "ssid": "WLAN-ID",
             "password": ""
         },
         "rtc": {
@@ -13,12 +13,16 @@
             "server_1": "time.nist.gov",
             "tz": "GMT0"
         },
-        "ezdata2": {
-            "dev_token": ""
+        "mqdata": {
+            "server": "test.mosquitto.org",
+            "port": 1884,
+            "username": "rw",
+            "password": "readwrite",
+            "topicPrefix": "gdc/m5/AirQ"
         },
         "buzzer": {
-            "mute": true
+            "mute": false
         },
-        "nickname": "AirQAirQ"
+        "nickname": "AirQ-Test01"
     }
 }

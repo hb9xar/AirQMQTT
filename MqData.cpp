@@ -1,11 +1,29 @@
-#include "MqData.hpp"
 
 #include <Arduino.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <ArduinoJson.h>
 
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <ESP32Ping.h>
 
-MqData::MqData() {}
+#include "MqData.hpp"
+
+WiFiClient net;
+PubSubClient mqtt_client;
+
+
+MqData::MqData() {
+	bool sts;
+
+	mqtt_client.setClient(net);
+
+	sts = mqtt_client.setBufferSize(512);
+	if (sts != true) {
+		log_e("unable to alloate MQTT buffer");
+	}
+}
 
 MqData::~MqData() {}
 
@@ -16,53 +34,81 @@ void MqData::setDeviceToken(const String &dev_token) {
 }
 
 
-void MqData::setConfig(const char *username, const char *password, const char *host, int port) {
-	log_i("MQTT Config: user=%s, pass=%s, host=%s, port=%d",
-		username, password, host, port);
+void MqData::setConfig(const char *username, const char *password, const char *host, 
+                       int port, const char *topic_prefix, const char *mac) {
+	int c;
+
 	_username = username;
 	_password = password;
 	_host = host;
 	_port = port;
+
+	/* calculate topic string */
+	if (_topic) { free(_topic); }
+	c=strlen(topic_prefix) + 1 + strlen(mac) + 1;
+	_topic=(char *)malloc(c);
+	snprintf(_topic, c, "%s/%s", topic_prefix, mac);
+	_topic[c]='\0';
+
+	log_i("MQTT Config: user=%s, pass=%s, host=%s, port=%d",
+		username, password, host, port);
+	log_i("MQTT Config: topic=[%s]", _topic);
+
+	return;
 }
 
 
 bool MqData::connect() {
+	uint8_t c=0;
+	if (!WiFi.isConnected()) {
+		log_e("WiFi not connected");
+		return false;
+	}
 
+//&&&
+#if 0
+	if(Ping.ping(_host)) {
+		log_i("Success!!");
+	} else {
+		log_i("Error :(");
+	}
+#endif
 
+	mqtt_client.setServer(_host, _port);
+	log_d("MQTT trying to connect to %s:%d [%s]...", _host, _port, _username);
+	while ((c++ < 3) && (!mqtt_client.connect("ClientID-MAC", _username, _password))) {
+		delay(1000);
+		log_d("MQTT re-trying to connect...");
+	}
+
+	if (!mqtt_client.connected()) {
+		log_e("MQTT connecion failed");
+		return false;
+	}
+
+    
+	log_i("Connection established");
 	return true;
 }
 
-bool MqData::publish() {
-	return true;
+
+bool MqData::publish(char *buf) {
+	bool sts;
+	log_d("MQTT Publish: [%s] => %s", _topic, buf);
+	log_d("buffersize=%d", strlen(buf));
+	//sts = mqtt_client.publish(_topic, "A234567890B234567890C234567890");
+	sts = mqtt_client.publish(_topic, buf);
+	return  sts;
 }
+
 
 bool MqData::disconnect() {
+	log_i("MQTT disconnecting...");
+	mqtt_client.disconnect();
 	return true;
 }
 
 
 
-bool MqData::setValue(char *key, float value) {
-    if (_public) {
-        return false;
-    }
-    char buf[256] = { 0 };
-    snprintf(
-        buf,
-        sizeof(buf) - 1,
-        "{\"dataType\": \"double\", \"name\": \"%s\", \"permissions\": \"1\", \"value\": %f}",
-        key,
-        value
-    );
-    //return _set((uint8_t *)buf, strlen(buf));
-    return true;
-}
 
-
-
-// connect to broker
-
-// publish data
-
-// disconnect from broker
 

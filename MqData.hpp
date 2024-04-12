@@ -12,23 +12,21 @@ public:
 
 	void setDeviceToken(const String &dev_token);
 
-	void setConfig(const char *username, const char *password, const char *host, int port);
+	void setConfig(const char *username, const char *password, const char *host, 
+	               int port, const char *topic_prefix, const char *mac);
 	bool connect();
-	bool publish();
+	bool publish(char *buf);
 	bool disconnect();
 
-	bool setValue(char *key, float value);
-//	bool setValue(char *key, double value);
-//	bool setValue(char *key, int value);
-
 private:
+
 	bool _public = false;
 	String _device_token = "";
 	const char *_username;
 	const char *_password;
 	const char *_host;
 	int   _port;
-	//&&&String _key = "";
+	char *_topic;
 };
 
 bool login(const String &loginName, const String &password, String &deviceToken);
