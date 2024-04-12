@@ -187,6 +187,7 @@ void setup() {
         pinMode(SEN55_POWER_EN, OUTPUT);
         digitalWrite(SEN55_POWER_EN, LOW);
     }
+//&&& read pin status to determine if SEN55 is powered or not. Power on, if required,
 
     log_i("LittleFS init");
     if (FORMAT_FILESYSTEM) {
@@ -292,13 +293,20 @@ void setup() {
         } else {
             log_i("Temperature Offset set to %f deg. Celsius (SEN54/SEN55 only)", tempOffset);
         }
-        /** Start Measurement */
-        error = sen5x.startMeasurement();
-        if (error) {
-            errorToString(error, errorMessage, 256);
-            log_w("Error trying to execute startMeasurement(): %s", errorMessage);
-        }
     }
+
+    /** Start Measurement */
+    // do this always, as SEN55 is put into idle mode upon shutdown() when USB powered
+    log_i("Command SEN55 to continuous measurement mode");
+    error = sen5x.startMeasurement();
+    if (error) {
+        errorToString(error, errorMessage, 256);
+        log_w("Error trying to execute startMeasurement(): %s", errorMessage);
+    }
+
+    // give some time for proper Fan spin-up
+    delay(10000);
+
 
     /** fixme: 超时处理 */
     bool isDataReady = false;
@@ -1211,6 +1219,15 @@ void shutdown() {
     log_i("shutdown");
     delay(10);
     digitalWrite(POWER_HOLD, LOW);
+
+    // stop SEN55 -> got to idle mode
+    log_i("Command SEN55 to idle mode (turn off Fan)");
+    uint16_t error = sen5x.stopMeasurement();
+    if (error) {
+        char errorMessage[256];
+        errorToString(error, errorMessage, 256);
+        log_w("Error trying to execute stopMeasurement(): %s", errorMessage);
+    }
 
     lcd.wakeup();
     lcd.waitDisplay();
