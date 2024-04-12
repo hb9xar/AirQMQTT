@@ -1202,6 +1202,8 @@ void countdownServiceTask() {
 
 
 void shutdown() {
+    unsigned long wakeup_interval;
+    unsigned long millis_exec_time;
     time_t timestamp = bm8563ToTime(bm8563);
     log_i("BM8653 timestamp: %ld", timestamp);
 
@@ -1236,7 +1238,14 @@ void shutdown() {
     delay(10);
     gpio_hold_en((gpio_num_t)SEN55_POWER_EN);
     gpio_deep_sleep_hold_en();
-    esp_sleep_enable_timer_wakeup(db.rtc.sleepInterval * 1000000);
+
+    // properly calculate wakeup time (subtract the execution time)
+    millis_exec_time=millis();
+    wakeup_interval = (db.rtc.sleepInterval * 1000) - millis_exec_time;
+    if (wakeup_interval < 20000) { wakeup_interval = 20000; }
+    log_i("calculated wakeup interval: %ld ms (exec time: %ld ms)", wakeup_interval, millis_exec_time);
+    //esp_sleep_enable_timer_wakeup(db.rtc.sleepInterval * 1000000);
+    esp_sleep_enable_timer_wakeup(wakeup_interval * 1000);
     esp_deep_sleep_start();
 }
 
