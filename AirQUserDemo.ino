@@ -13,8 +13,6 @@
 #include <SensirionI2CSen5x.h>
 #include <OneButton.h>
 #include <cJSON.h>
-//&&& dont use NVS and write every minute to it. wears out flash quickly...
-#include <Preferences.h>
 
 #include "MqData.hpp"
 #include "config.h"
@@ -63,19 +61,11 @@ class AirQ_GFX : public lgfx::LGFX_Device {
 };
 
 
-typedef enum WakeupType_t {
-    E_WAKEUP_TYPE_UNKNOWN = 0,
-    E_WAKEUP_TYPE_RTC,
-    E_WAKEUP_TYPE_USER,
-    E_WAKEUP_TYPE_USB,
-} WakeupType_t;
-
 typedef enum RunMode_t {
     E_RUN_MODE_FACTORY = 0,
     E_RUN_MODE_MAIN,
     E_RUN_MODE_SETTING,
     E_RUN_MODE_APSETTING,
-//&&&    E_RUN_MODE_EZDATA,
 } RunMode_t;
 
 
@@ -132,17 +122,6 @@ typedef struct WiFiStatusEvent_t {
     WiFiEventInfo_t info;
 } WiFiStatusEvent_t;
 
-//&&&
-#if 0
-typedef enum EzDataState_t {
-    E_EZDATA_STATE_INIT = 0,
-    E_EZDATA_STATE_SUCCESS,
-    E_EZDATA_STATE_FAILURE,
-} EzDataState_t;
-#endif
-
-
-WakeupType_t wakeupType = E_WAKEUP_TYPE_UNKNOWN;
 
 RunMode_t runMode = E_RUN_MODE_MAIN;
 
@@ -155,14 +134,7 @@ SensirionI2CSen5x sen5x;
 I2C_BM8563 bm8563(I2C_BM8563_DEFAULT_ADDRESS, Wire);
 Sensor sensor(scd4x, sen5x, bm8563);
 
-//&&&EzData ezdataHanlder(db.ezdata2.devToken, "raw");
-//&&&bool ezdataStatus = false;
-//&&&EzDataState_t ezdataState = E_EZDATA_STATE_INIT;
 MqData mqdata;
-
-Preferences preferences;
-uint32_t successCounter = 0;
-uint32_t failCounter = 0;
 
 OneButton btnA = OneButton(
     USER_BTN_A,  // Input pin for the button
@@ -233,12 +205,6 @@ void setup() {
     }
     BUTTON_TONE();
 
-//&&& Preferences to be removed...
-    log_i("NVS init");
-    preferences.begin("airq", false);
-    successCounter = preferences.getUInt("OK", 0);
-    failCounter = preferences.getUInt("NG", 0);
-
     log_i("Screen init");
     lcd.begin();
     lcd.setEpdMode(epd_mode_t::epd_text);
@@ -254,14 +220,9 @@ void setup() {
 
     /* Initialize MQTT module */
     log_i("MqData init");
-    //mqdata.setConfig("username", "password", "mqtt.segv.xyz", 8883, "m5/AirQ", mac.c_str());
-    //mqdata.setConfig("rw", "readwrite", "test.mosquitto.org", 1883, "m5/AirQ", mac.c_str());
-    //mqdata.setConfig("rw", "readwrite", "91.121.93.94", 1884, "m5/AirQ", mac.c_str());
     mqdata.setConfig(db.mqdata.username.c_str(), db.mqdata.password.c_str(), 
                      db.mqdata.server.c_str(), db.mqdata.port, 
                      db.mqdata.topicPrefix.c_str(), mac.c_str());
-
-
 
     log_i("I2C init");
     pinMode(GROVE_SDA, OUTPUT);
@@ -272,10 +233,7 @@ void setup() {
     bm8563.begin();
     bm8563.clearIRQ();
 
-    wakeupType = getDeviceWakeupType();
-
-    //&&&
-    // ?? should I wait here for WiFi to be connected and IP assigned?
+    // wait here util WLAN is connected
     uint8_t count=0;
     while ((WiFi.isConnected() != true) && (count++ < 20)) {
         log_i("WiFi not yet conected, waiting (%i)...", count);
@@ -349,7 +307,7 @@ void setup() {
         }
     } while (!isDataReady);
 
-    if (db.factoryState || wakeupType == E_WAKEUP_TYPE_USER) {
+    if (db.factoryState) {
         log_i("in factor state -> E_RUN_MODE_FACTORY");
         FAIL_TONE();
         runMode = E_RUN_MODE_FACTORY;
@@ -489,7 +447,6 @@ void mainApp(ButtonEvent_t *buttonEvent) {
         )
     ) {
         runMode = (buttonEvent->id == E_BUTTON_A)
-//&&&                  ? E_RUN_MODE_EZDATA
                   ? E_RUN_MODE_SETTING
                   : E_RUN_MODE_SETTING;
         refresh = true;
@@ -531,9 +488,6 @@ void mainApp(ButtonEvent_t *buttonEvent) {
         if (
             lastCountDown == db.rtc.sleepInterval
             && WiFi.isConnected()
-//            && (
-//                WiFi.isConnected() && db.ezdata2.devToken
-//            )
         ) {
             mqDataUploadCount = MQDATA_UPLOAD_RETRY_COUNT;
             runingMqDataUpload = true;
@@ -550,50 +504,18 @@ void mainApp(ButtonEvent_t *buttonEvent) {
         lastCountDownUpdate = currentMillisecond;
     }
 
-//&&&
-#if 0
-    if (WiFi.isConnected() && runingEzdataUpload && ezdataUploadCount-- > 0) {
-        ezdataHanlder.setDeviceToken(db.ezdata2.devToken);
-        BUTTON_TONE();
-        if (uploadSensorRawData(ezdataHanlder)) {
-            successCounter += 1;
-//&&& Preferences to be removed...
-            preferences.putUInt("OK", successCounter);
-            String msg = "OK:" + String(successCounter);
-            statusView.displayNetworkStatus("Upload", msg.c_str());
-            SUCCESS_TONE();
-            runingEzdataUpload = false;
-            ezdataState = E_EZDATA_STATE_SUCCESS;
-            ezdataStatus = true;
-        } else {
-            failCounter += 1;
-//&&& Preferences to be removed...
-            preferences.putUInt("NG", failCounter);
-            String msg = "NG:" + String(failCounter);
-            statusView.displayNetworkStatus("Upload", msg.c_str());
-            FAIL_TONE();
-        }
-    }
-#endif
-
     if (WiFi.isConnected() && runingMqDataUpload && mqDataUploadCount-- > 0) {
         log_d("triggering MQTT data publish");
         BUTTON_TONE();
         if (uploadSensorRawData()) {
             log_i("MQTT publish success");
-            successCounter += 1;
-//&&& Preferences to be removed...
-            preferences.putUInt("OK", successCounter);
-            String msg = "OK:" + String(successCounter);
+            String msg = "OK";
             statusView.displayNetworkStatus("Upload", msg.c_str());
             SUCCESS_TONE();
             runingMqDataUpload = false;
         } else {
             log_w("MQTT publish failed");
-            failCounter += 1;
-//&&& Preferences to be removed...
-            preferences.putUInt("NG", failCounter);
-            String msg = "NG:" + String(failCounter);
+            String msg = "FAIL";
             statusView.displayNetworkStatus("Upload", msg.c_str());
             FAIL_TONE();
         }
@@ -837,30 +759,13 @@ void mqdataServiceTask() {
 
     if (
         WiFi.isConnected() == false
-//        || ezdataStatus == true
         || (esp_timer_get_time() / 1000) - lastMillisecond < 1000
     ) {
         return ;
     }
 
-        log_i("mqdataServiceTask() ...");
-//    if (registeredDevice(mac, db.ezdata2.loginName, db.ezdata2.password, db.ezdata2.devToken)) {
-//        log_w("registeredDevice success");
-//    } else {
-//        log_w("registeredDevice error");
-//        log_i("Login ...");
-//        db.ezdata2.loginName = "USER_" + mac;
-//        db.ezdata2.password = "12345678";
-//        if (login(db.ezdata2.loginName, db.ezdata2.password, db.ezdata2.devToken)) {
-//            log_w("login success");
-//        } else {
-//            log_w("login error");
-//        }
-//    }
-
-//    ezdataStatus = true;
+    log_i("mqdataServiceTask() ...");
     lastMillisecond = esp_timer_get_time() / 1000;
-//    db.saveToFile();
 
 }
 
@@ -1230,32 +1135,6 @@ OUT1:
 }
 
 
-/**
- * This method of obtaining wake status is not 100% accurate.
- */
-WakeupType_t getDeviceWakeupType() {
-    WakeupType_t wakeupType = E_WAKEUP_TYPE_UNKNOWN;
-    time_t seconds = (time_t)preferences.getLong("sleep_timestamp");
-    log_d("bm8563 timestamp: %ld", bm8563ToTime(bm8563));
-    log_d("last sleep timestamp: %ld", seconds);
-    // if (bm8563ToTime(bm8563) - seconds < (db.rtc.sleepInterval - 3)) {
-        pinMode(USER_BUTTON_POWER, INPUT);
-        if (digitalRead(USER_BUTTON_POWER) == 0) {
-            log_i("Button triggers wake-up");
-            wakeupType = E_WAKEUP_TYPE_USER;
-        } else {
-            log_i("USB wake-up");
-            wakeupType = E_WAKEUP_TYPE_USB;
-        }
-    // } else
-    if (abs(bm8563ToTime(bm8563) - seconds - db.rtc.sleepInterval) < 3) {
-        log_i("RTC wake-up");
-        wakeupType = E_WAKEUP_TYPE_RTC;
-    }
-    return wakeupType;
-}
-
-
 time_t bm8563ToTime(I2C_BM8563 &bm8563) {
     I2C_BM8563_TimeTypeDef I2C_BM8563_TimeStruct;
     bm8563.getTime(&I2C_BM8563_TimeStruct);
@@ -1311,11 +1190,8 @@ void countdownServiceTask() {
 
 
 void shutdown() {
-
     time_t timestamp = bm8563ToTime(bm8563);
     log_i("BM8653 timestamp: %ld", timestamp);
-    preferences.putLong("sleep_timestamp", timestamp);
-    preferences.end();
 
     // scd4x.powerDown();
     // digitalWrite(SEN55_POWER_EN, HIGH);
@@ -1334,9 +1210,7 @@ void shutdown() {
 
     lcd.wakeup();
     lcd.waitDisplay();
-    preferences.begin("airq", false);
     log_i("USB powered, continue to operate");
-    wakeupType = E_WAKEUP_TYPE_USB;
     digitalWrite(POWER_HOLD, HIGH);
     delay(10);
     gpio_hold_en((gpio_num_t)SEN55_POWER_EN);
