@@ -240,7 +240,11 @@ void setup() {
         delay(1000);
     }
     if (WiFi.isConnected() == true) {
+        char rssi[10];
         log_i("WiFi is connected (count=%i)", count);
+        snprintf(rssi, sizeof(rssi)-1, "%d dBm", WiFi.RSSI());
+        rssi[sizeof(rssi)-1]='\0';
+        statusView.updateNetworkStatus("WIFI", rssi);
     } else {
         log_i("WiFi NOT CONNECTED (count=%i)", count);
     }

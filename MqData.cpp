@@ -6,7 +6,6 @@
 
 #include <WiFi.h>
 #include <PubSubClient.h>
-#include <ESP32Ping.h>
 
 #include "MqData.hpp"
 
@@ -65,15 +64,6 @@ bool MqData::connect() {
 		return false;
 	}
 
-//&&&
-#if 0
-	if(Ping.ping(_host)) {
-		log_i("Success!!");
-	} else {
-		log_i("Error :(");
-	}
-#endif
-
 	mqtt_client.setServer(_host, _port);
 	log_d("MQTT trying to connect to %s:%d [%s]...", _host, _port, _username);
 	while ((c++ < 3) && (!mqtt_client.connect("ClientID-MAC", _username, _password))) {
@@ -96,7 +86,6 @@ bool MqData::publish(char *buf) {
 	bool sts;
 	log_d("MQTT Publish: [%s] => %s", _topic, buf);
 	log_d("buffersize=%d", strlen(buf));
-	//sts = mqtt_client.publish(_topic, "A234567890B234567890C234567890");
 	sts = mqtt_client.publish(_topic, buf);
 	return  sts;
 }
