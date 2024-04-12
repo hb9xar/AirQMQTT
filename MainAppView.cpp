@@ -684,42 +684,42 @@ void StatusView::updateSEN55(
     _noxCanvas->clear(TFT_WHITE);
 
 
-    sprintf(str, "%.2f", massConcentrationPm1p0);
+    sprintf(str, "%.1f", massConcentrationPm1p0);
     _pm1p0Canvas->drawRightString(str, _pm1p0Canvas->width(), 0, _sen55OptionFont);
     _pm1p0Canvas->pushSprite(_pm1p0CanvasX, _pm1p0CanvasY);
 
     memset(str, 0, sizeof(str));
-    sprintf(str, "%.2f", massConcentrationPm2p5);
+    sprintf(str, "%.1f", massConcentrationPm2p5);
     _pm2p5Canvas->drawRightString(str, _pm2p5Canvas->width(), 0, _sen55OptionFont);
     _pm2p5Canvas->pushSprite(_pm2p5CanvasX, _pm2p5CanvasY);
 
     memset(str, 0, sizeof(str));
-    sprintf(str, "%.2f", massConcentrationPm4p0);
+    sprintf(str, "%.1f", massConcentrationPm4p0);
     _pm4p0Canvas->drawRightString(str, _pm4p0Canvas->width(), 0, _sen55OptionFont);
     _pm4p0Canvas->pushSprite(_pm4p0CanvasX, _pm4p0CanvasY);
 
     memset(str, 0, sizeof(str));
-    sprintf(str, "%.2f", massConcentrationPm10p0);
+    sprintf(str, "%.1f", massConcentrationPm10p0);
     _pm10p0Canvas->drawRightString(str, _pm10p0Canvas->width(), 0, _sen55OptionFont);
     _pm10p0Canvas->pushSprite(_pm10p0CanvasX, _pm10p0CanvasY);
 
     memset(str, 0, sizeof(str));
-    sprintf(str, "%.2f", ambientTemperature);
+    sprintf(str, "%.1f", ambientTemperature);
     _sen55TempCanvas->drawRightString(str, _sen55TempCanvas->width(), 0, _sen55OptionFont);
     _sen55TempCanvas->pushSprite(_sen55TempCanvasX, _sen55TempCanvasY);
 
     memset(str, 0, sizeof(str));
-    sprintf(str, "%.2f", ambientHumidity);
+    sprintf(str, "%.1f", ambientHumidity);
     _sen55HumiCanvas->drawRightString(str, _sen55HumiCanvas->width(), 0, _sen55OptionFont);
     _sen55HumiCanvas->pushSprite(_sen55HumiCanvasX, _sen55HumiCanvasY);
 
     memset(str, 0, sizeof(str));
-    sprintf(str, "%.2f", vocIndex);
+    sprintf(str, "%.1f", vocIndex);
     _vocCanvas->drawRightString(str, _pm1p0Canvas->width(), 0, _sen55OptionFont);
     _vocCanvas->pushSprite(_vocCanvasX, _vocCanvasY);
 
     memset(str, 0, sizeof(str));
-    sprintf(str, "%.2f", noxIndex);
+    sprintf(str, "%.1f", noxIndex);
     _noxCanvas->drawRightString(str, _noxCanvas->width(), 0, _sen55OptionFont);
     _noxCanvas->pushSprite(_noxCanvasX, _noxCanvasY);
 }
