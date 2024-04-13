@@ -1224,7 +1224,10 @@ void shutdown() {
 
     // stop SEN55 -> got to idle mode
     log_i("Command SEN55 to idle mode (turn off Fan)");
-    uint16_t error = sen5x.stopMeasurement();
+    //uint16_t error = sen5x.stopMeasurement();
+    // maybe better: should keep NOx and VOC measurements going.
+    // otherwise they will be 0 when coming out of idle mode
+    uint16_t error = sen5x.startMeasurementWithoutPm();
     if (error) {
         char errorMessage[256];
         errorToString(error, errorMessage, 256);
