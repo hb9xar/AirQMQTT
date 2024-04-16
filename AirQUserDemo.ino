@@ -1124,8 +1124,10 @@ bool uploadSensorRawData(void) {
     cJSON_AddNumberToObject(scd40Object, "temperature", sensor.scd40.temperature);
 
     cJSON_AddNumberToObject(rtcObject, "sleep_interval", db.rtc.sleepInterval);
+
     cJSON_AddStringToObject(profileObject, "nickname", db.nickname.c_str());
     cJSON_AddStringToObject(profileObject, "mac", mac.c_str());
+    cJSON_AddNumberToObject(profileObject, "rssi", WiFi.RSSI());
 
     t = bm8563ToTime(bm8563);
     cJSON_AddNumberToObject(datetimeObject, "ts", t);
