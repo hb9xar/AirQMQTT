@@ -810,12 +810,13 @@ void StatusView::updateNickname(String &nickname) {
 
 
 void StatusView::load() {
-    _lcd->clear();
-    _lcd->waitDisplay();
-    _lcd->clear(TFT_BLACK);
-    _lcd->waitDisplay();
-    _lcd->clear(TFT_WHITE);
-    _lcd->waitDisplay();
+// eliminate excessive black/white flashing on display updates
+//    _lcd->clear();
+//    _lcd->waitDisplay();
+//    _lcd->clear(TFT_BLACK);
+//    _lcd->waitDisplay();
+//    _lcd->clear(TFT_WHITE);
+//    _lcd->waitDisplay();
     _updateImpl(_canvas, 0, 0);
     _lcd->waitDisplay();
 }
