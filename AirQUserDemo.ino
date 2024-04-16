@@ -135,6 +135,8 @@ I2C_BM8563 bm8563(I2C_BM8563_DEFAULT_ADDRESS, Wire);
 Sensor sensor(scd4x, sen5x, bm8563);
 
 MqData mqdata;
+int64_t dataTransferTimestamp;
+int64_t SensorInitTimestamp;
 
 OneButton btnA = OneButton(
     USER_BTN_A,  // Input pin for the button
@@ -187,7 +189,6 @@ void setup() {
         pinMode(SEN55_POWER_EN, OUTPUT);
         digitalWrite(SEN55_POWER_EN, LOW);
     }
-//&&& read pin status to determine if SEN55 is powered or not. Power on, if required,
 
     log_i("LittleFS init");
     if (FORMAT_FILESYSTEM) {
@@ -238,6 +239,8 @@ void setup() {
     uint8_t count=0;
     while ((WiFi.isConnected() != true) && (count++ < 20)) {
         log_i("WiFi not yet conected, waiting (%i)...", count);
+        statusView.updateNetworkStatus("WIFI", "con...");
+        statusView.load();
         delay(1000);
     }
     if (WiFi.isConnected() == true) {
@@ -246,6 +249,7 @@ void setup() {
         snprintf(rssi, sizeof(rssi)-1, "%d dBm", WiFi.RSSI());
         rssi[sizeof(rssi)-1]='\0';
         statusView.updateNetworkStatus("WIFI", rssi);
+        statusView.load();
     } else {
         log_i("WiFi NOT CONNECTED (count=%i)", count);
     }
@@ -304,9 +308,10 @@ void setup() {
         log_w("Error trying to execute startMeasurement(): %s", errorMessage);
     }
 
-    // give some time for proper Fan spin-up
-    delay(10000);
+    log_i("Sensors initialized.");
 
+    dataTransferTimestamp = 0;
+    SensorInitTimestamp = esp_timer_get_time() / 1000;
 
     /** fixme: 超时处理 */
     bool isDataReady = false;
@@ -465,6 +470,23 @@ void mainApp(ButtonEvent_t *buttonEvent) {
         return ;
     }
 
+    if (
+        lastCountDown == db.rtc.sleepInterval
+        && WiFi.isConnected()
+    ) {
+        mqDataUploadCount = MQDATA_UPLOAD_RETRY_COUNT;
+        runingMqDataUpload = true;
+    }
+
+    // Heat-up phase has passed, refresh data from sensors
+    log_d("Heat-up time: %lld ms", (currentMillisecond - SensorInitTimestamp));
+    if (runingMqDataUpload 
+        && mqDataUploadCount == MQDATA_UPLOAD_RETRY_COUNT
+        && dataTransferTimestamp == 0
+        && (currentMillisecond - SensorInitTimestamp) / 1000 >= AIRQ_HEATUP_DELAY) {
+        refresh = true;
+    }
+
     if (refresh) {
         refresh = false;
         log_d("refresh");
@@ -496,14 +518,6 @@ void mainApp(ButtonEvent_t *buttonEvent) {
         statusView.load();
         lastMillisecond = currentMillisecond;
 
-        /* initiate data upload */
-        if (
-            lastCountDown == db.rtc.sleepInterval
-            && WiFi.isConnected()
-        ) {
-            mqDataUploadCount = MQDATA_UPLOAD_RETRY_COUNT;
-            runingMqDataUpload = true;
-        }
     }
 
     if (currentMillisecond - lastCountDownUpdate > 1000) {
@@ -516,20 +530,36 @@ void mainApp(ButtonEvent_t *buttonEvent) {
         lastCountDownUpdate = currentMillisecond;
     }
 
-    if (WiFi.isConnected() && runingMqDataUpload && mqDataUploadCount-- > 0) {
-        log_d("triggering MQTT data publish");
-        BUTTON_TONE();
-        if (uploadSensorRawData()) {
-            log_i("MQTT publish success");
-            String msg = "OK";
-            statusView.displayNetworkStatus("Upload", msg.c_str());
-            SUCCESS_TONE();
-            runingMqDataUpload = false;
+    // initiate data upload, if
+    // - upload is pending (triggered further above)
+    // - uptime is at least HEATUP_DELAY seconds (SEN55 warm-up)
+    log_d("millis() = %lld", currentMillisecond);
+    if (runingMqDataUpload
+        && (currentMillisecond - SensorInitTimestamp) / 1000 > AIRQ_HEATUP_DELAY) {
+        // and
+        // - WiFi is connected
+        // - retry counter has not exceeded
+        if (WiFi.isConnected() 
+            && mqDataUploadCount-- > 0) {
+            log_d("triggering MQTT data publish");
+            BUTTON_TONE();
+            if (uploadSensorRawData()) {
+                log_i("MQTT publish success");
+                String msg = "OK";
+                statusView.displayNetworkStatus("Upload", msg.c_str());
+                SUCCESS_TONE();
+                runingMqDataUpload = false;
+                dataTransferTimestamp = currentMillisecond;
+            } else {
+                log_w("MQTT publish failed");
+                String msg = "FAIL";
+                statusView.displayNetworkStatus("Upload", msg.c_str());
+                FAIL_TONE();
+            }
         } else {
-            log_w("MQTT publish failed");
-            String msg = "FAIL";
-            statusView.displayNetworkStatus("Upload", msg.c_str());
-            FAIL_TONE();
+            log_d("MQTT publish failed after retries");
+            dataTransferTimestamp = currentMillisecond;
+            runingMqDataUpload = false;
         }
     }
 }
@@ -1189,8 +1219,20 @@ time_t bm8563ToTime(I2C_BM8563 &bm8563) {
 void countdownServiceTask() {
     static uint32_t cur = esp_timer_get_time() / 1000;
 
+    // don't shutdown until measurement has been taken and transmitted
+    log_d("dataTransferTimestamp = %lld", dataTransferTimestamp);
+
     if (runMode == E_RUN_MODE_MAIN) {
-        if (esp_timer_get_time() / 1000 - cur > AIRQ_SHUTDOWN_TIMEOUT * 1000) {
+//        if (esp_timer_get_time() / 1000 - cur > AIRQ_SHUTDOWN_TIMEOUT * 1000) {
+        log_d("now - dataTransferTimestamp = %lld", esp_timer_get_time() / 1000 - dataTransferTimestamp);
+
+        if (dataTransferTimestamp > 0
+            && esp_timer_get_time() / 1000 - dataTransferTimestamp > AIRQ_SHUTDOWN_TIMEOUT * 1000) {
+            shutdown();
+        }
+
+        if (dataTransferTimestamp == 0
+            && esp_timer_get_time() / 1000 - cur > (2*AIRQ_SHUTDOWN_TIMEOUT + AIRQ_HEATUP_DELAY) * 1000) {
             shutdown();
         }
     } else {
@@ -1205,8 +1247,8 @@ void countdownServiceTask() {
 
 
 void shutdown() {
-    unsigned long wakeup_interval;
-    unsigned long millis_exec_time;
+    int64_t wakeup_interval;
+    int64_t millis_exec_time;
     time_t timestamp = bm8563ToTime(bm8563);
     log_i("BM8653 timestamp: %ld", timestamp);
 
@@ -1246,10 +1288,11 @@ void shutdown() {
     gpio_deep_sleep_hold_en();
 
     // properly calculate wakeup time (subtract the execution time)
-    millis_exec_time=millis();
+    millis_exec_time=esp_timer_get_time() / 1000;
     wakeup_interval = (db.rtc.sleepInterval * 1000) - millis_exec_time;
     if (wakeup_interval < 20000) { wakeup_interval = 20000; }
-    log_i("calculated wakeup interval: %ld ms (exec time: %ld ms)", wakeup_interval, millis_exec_time);
+    if (wakeup_interval > (db.rtc.sleepInterval * 1000)) { wakeup_interval = (db.rtc.sleepInterval * 1000); }
+    log_i("calculated wakeup interval: %lld ms (exec time: %lld ms)", wakeup_interval, millis_exec_time);
     //esp_sleep_enable_timer_wakeup(db.rtc.sleepInterval * 1000000);
     esp_sleep_enable_timer_wakeup(wakeup_interval * 1000);
     esp_deep_sleep_start();
