@@ -204,7 +204,7 @@ void StatusView::initSCD40()
     _canvas->fillRect(tempX, tempY, 5, _canvas->fontHeight(_scd40TitleFont), TFT_BLACK);
     // 5px
     tempX = tempX + 5 + 2;
-    _canvas->drawString("SCD40", tempX, tempY, _scd40TitleFont);
+    _canvas->drawString("SCD40/ex", tempX, tempY, _scd40TitleFont);
 
     // Co2
     tempX = _scd40BaseCursorX + _border + _padding;

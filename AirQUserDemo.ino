@@ -11,6 +11,8 @@
 #include "I2C_BM8563.h"
 #include <SensirionI2CScd4x.h>
 #include <SensirionI2CSen5x.h>
+#include <SensirionI2cSht4x.h>
+#include <SparkFunBME280.h>
 #include <OneButton.h>
 #include <cJSON.h>
 
@@ -131,8 +133,10 @@ StatusView statusView(&lcd, &mainCanvas);
 
 SensirionI2CScd4x scd4x;
 SensirionI2CSen5x sen5x;
+SensirionI2cSht4x sht40;
+BME280 bmp280;
 I2C_BM8563 bm8563(I2C_BM8563_DEFAULT_ADDRESS, Wire);
-Sensor sensor(scd4x, sen5x, bm8563);
+Sensor sensor(scd4x, sen5x, sht40, bmp280, bm8563);
 
 MqData mqdata;
 int64_t dataTransferTimestamp;
@@ -227,9 +231,12 @@ void setup() {
                      db.mqdata.topicPrefix.c_str(), mac.c_str());
 
     log_i("I2C init");
-    pinMode(GROVE_SDA, OUTPUT);
-    pinMode(GROVE_SCL, OUTPUT);
+    //pinMode(GROVE_SDA, OUTPUT);
+    //pinMode(GROVE_SCL, OUTPUT);
+    // internal I2C bus
     Wire.begin(I2C1_SDA_PIN, I2C1_SCL_PIN);
+    // external Grove I2C bus
+    Wire1.begin(GROVE_SDA, GROVE_SCL);
 
     log_i("RTC(BM8563) init");
     bm8563.begin();
@@ -263,11 +270,45 @@ void setup() {
         "pool.ntp.org"
     );
 
-    log_i("SCD40 sensor init");
+    // optional sensors on external GROVE bus
+    log_i("SHT40 sensor init");
     char errorMessage[256];
+    uint16_t error;
+    sht40.begin(Wire1, SHT40_I2C_ADDR_44);
+    uint32_t serialNumber = 0;
+    error = sht40.serialNumber(serialNumber);
+    if (error) {
+        errorToString(error, errorMessage, sizeof errorMessage);
+        log_w("Error trying to execute serialNumber(): %s", errorMessage);
+        sensor.sht40.is_present=0;
+    } else {
+        sensor.sht40.is_present=1;
+        log_i("SHT40 serialNumber: %d", serialNumber);
+    }
+
+    log_i("BMP280 sensor init");
+    bmp280.setI2CAddress(0x76);
+    if (bmp280.beginI2C(Wire1)) {
+        uint32_t ChipID = 0;
+        ChipID = bmp280.readRegister(BME280_CHIP_ID_REG);
+        if ((ChipID == 0x58) || (ChipID == 0x60)) {
+            log_i("BMP280 - 0x%x -> %s Sensor", ChipID, (ChipID == 0x58)? "BMP" : "BME");
+            sensor.bmp280.is_present=1;
+        } else {
+            log_w("BMP280 - unknown ChipID: 0x%x", ChipID);
+            sensor.bmp280.is_present=0;
+        }
+    } else {
+        log_w("BMP280 init failed");
+        sensor.bmp280.is_present=0;
+    }
+    bmp280.setPressureOverSample(8);
+  
+    // internal sensors on external I2C bus
+    log_i("SCD40 sensor init");
     scd4x.begin(Wire);
     /** stop potentially previously started measurement */
-    uint16_t error = scd4x.stopPeriodicMeasurement();
+    error = scd4x.stopPeriodicMeasurement();
     if (error) {
         errorToString(error, errorMessage, 256);
         log_w("Error trying to execute stopPeriodicMeasurement(): %s", errorMessage);
@@ -492,15 +533,25 @@ void mainApp(ButtonEvent_t *buttonEvent) {
         log_d("refresh");
         sensor.getSCD40MeasurementResult();
         sensor.getSEN55MeasurementResult();
+        sensor.getSHT40MeasurementResult();
+        sensor.getBMP280MeasurementResult();
         sensor.getBatteryVoltageRaw();
         sensor.getTimeString();
         sensor.getDateString();
 
-        statusView.updateSCD40(
-            sensor.scd40.co2,
-            sensor.scd40.temperature,
-            sensor.scd40.humidity
-        );
+        if (sensor.sht40.is_present) {
+            statusView.updateSCD40(
+                sensor.scd40.co2,
+                sensor.sht40.temperature,
+                sensor.sht40.humidity
+            );
+        } else {
+            statusView.updateSCD40(
+                sensor.scd40.co2,
+                sensor.scd40.temperature,
+                sensor.scd40.humidity
+            );
+        }
         statusView.updatePower(sensor.battery.raw);
         statusView.updateCountdown(db.rtc.sleepInterval);
         statusView.updateSEN55(
@@ -1093,6 +1144,8 @@ bool uploadSensorRawData(void) {
     cJSON *rspObject = NULL;
     cJSON *sen55Object = NULL;
     cJSON *scd40Object = NULL;
+    cJSON *sht40Object = NULL;
+    cJSON *bmp280Object = NULL;
     cJSON *rtcObject = NULL;
     cJSON *profileObject = NULL;
     cJSON *datetimeObject = NULL;
@@ -1119,6 +1172,22 @@ bool uploadSensorRawData(void) {
         goto OUT;
     }
     cJSON_AddItemToObject(rspObject, "scd40", scd40Object);
+
+    if (sensor.sht40.is_present && sensor.sht40.is_valid) {
+        sht40Object = cJSON_CreateObject();
+        if (sht40Object == NULL) {
+            goto OUT;
+        }
+        cJSON_AddItemToObject(rspObject, "sht40", sht40Object);
+        }
+
+    if (sensor.bmp280.is_present && sensor.bmp280.is_valid) {
+        bmp280Object = cJSON_CreateObject();
+        if (bmp280Object == NULL) {
+            goto OUT;
+        }
+        cJSON_AddItemToObject(rspObject, "bmp280", bmp280Object);
+    }
 
     rtcObject = cJSON_CreateObject();
     if (rtcObject == NULL) {
@@ -1152,6 +1221,16 @@ bool uploadSensorRawData(void) {
     cJSON_AddNumberToObject(scd40Object, "co2", sensor.scd40.co2);
     cJSON_AddNumberToObject(scd40Object, "humidity", sensor.scd40.humidity);
     cJSON_AddNumberToObject(scd40Object, "temperature", sensor.scd40.temperature);
+
+    if (sensor.sht40.is_present && sensor.sht40.is_valid) {
+        cJSON_AddNumberToObject(sht40Object, "humidity", sensor.sht40.humidity);
+        cJSON_AddNumberToObject(sht40Object, "temperature", sensor.sht40.temperature);
+    }
+
+    if (sensor.bmp280.is_present && sensor.bmp280.is_valid) {
+        cJSON_AddNumberToObject(bmp280Object, "pressure", sensor.bmp280.pressure);
+        cJSON_AddNumberToObject(bmp280Object, "temperature", sensor.bmp280.temperature);
+    }
 
     cJSON_AddNumberToObject(rtcObject, "sleep_interval", db.rtc.sleepInterval);
 

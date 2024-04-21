@@ -89,6 +89,74 @@ bool Sensor::getSEN55MeasurementResult() {
 }
 
 
+bool Sensor::getSHT40MeasurementResult() {
+    // if sensor not present, return immediately
+    if (!sht40.is_present) return false;
+
+    log_d("SHT40 Measurement start");
+    sht40.is_valid = false;
+
+    // get measurement
+    uint16_t error = _sht40.measureLowestPrecision(sht40.temperature, sht40.humidity);
+
+    if (error) {
+        errorToString(error, _errorMessage, 256);
+        log_w("Error trying to execute measure...(): %s", _errorMessage);
+        return false;
+    } else {
+        log_d("SHT40 Measurement Result:");
+        log_d("  Temperature: %f °C", sht40.temperature);
+        log_d("  Humidity: %f %RH", sht40.humidity);
+        sht40.is_valid = true;
+        return true;
+    }
+    return false;
+}
+
+
+bool Sensor::getBMP280MeasurementResult() {
+    uint16_t error;
+
+    // if sensor not present, return immediately
+    if (!bmp280.is_present) return false;
+
+    log_d("BMP280 Measurement start");
+    bmp280.is_valid = false;
+
+
+    bmp280.pressure = _bmp280.readFloatPressure();
+    bmp280.temperature = _bmp280.readTempC();
+
+    // check validity of data (as no status is available, estimate
+    // validity by value range. Limits according to datasheet.
+    error = 0;
+    // 300 ... 1100 hPa - measurement is in Pa
+    if ((bmp280.pressure < 300*100) || (bmp280.pressure > 1100*100)) { 
+        log_d("BMP280 Measurement pressure %.2f outside valid range", bmp280.pressure);
+        error = 1;
+    }
+    if ((bmp280.temperature < -40) || (bmp280.temperature > 85)) { 
+        log_d("BMP280 Measurement temperature %.2f outside valid range", bmp280.temperature);
+        error = 1;
+    }
+
+    if (error) {
+        log_w("BMP280 Measurement error (outside valid range)");
+        log_d("  Pressure: %f Pa", bmp280.pressure);
+        log_d("  Temperature: %f °C", bmp280.temperature);
+        return false;
+    } else {
+        log_d("BMP280 Measurement Result:");
+        log_d("  Pressure: %f °hPa", bmp280.pressure);
+        log_d("  Temperature: %f °C", bmp280.temperature);
+        bmp280.is_valid = true;
+        return true;
+    }
+
+    return false;
+}
+
+
 void Sensor::getBatteryVoltageRaw() {
     esp_adc_cal_characteristics_t adc_chars;
     esp_adc_cal_characterize(

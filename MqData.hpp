@@ -4,6 +4,8 @@
 #include <WString.h>
 #include <type_traits>
 
+# define MQTT_BUFFER	768
+
 class MqData
 {
 public:
