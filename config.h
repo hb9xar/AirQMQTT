@@ -43,10 +43,16 @@
  *
  * AirQ在唤醒状态下的关机超时时间，单位是秒
  */
-#define AIRQ_SHUTDOWN_TIMEOUT 10
+#define AIRQ_SHUTDOWN_TIMEOUT 5
 
 /* WiFi connection timeout, unit is seconds
  *
  * WiFi连接超时时间，单位是秒
  */
 #define WIFI_CONNECT_TIMEOUT 10
+
+/* Number of seconds (after power-up) to wait for sensor warmup
+ * before collecting the data sample and sending it
+ * 
+ */
+#define AIRQ_HEATUP_DELAY 20
