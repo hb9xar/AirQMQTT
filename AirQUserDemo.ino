@@ -1238,6 +1238,8 @@ bool uploadSensorRawData(void) {
     cJSON_AddStringToObject(profileObject, "mac", mac.c_str());
     cJSON_AddStringToObject(profileObject, "wlan", WiFi.SSID().c_str());
     cJSON_AddNumberToObject(profileObject, "rssi", WiFi.RSSI());
+    cJSON_AddNumberToObject(profileObject, "Vbat", ((float)sensor.battery.raw / 1000) * 2);
+
 
     t = bm8563ToTime(bm8563);
     cJSON_AddNumberToObject(datetimeObject, "ts", t);
