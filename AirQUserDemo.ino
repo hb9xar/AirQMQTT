@@ -224,6 +224,13 @@ void setup() {
     wifiAPSTASetup();
     appWebServer();
 
+    /* apply sane defaults for missing/emty values */
+    if (db.nickname.length() == 0) {
+        String tmp = mac;
+        tmp.toLowerCase();
+        db.nickname = "Q-" + tmp.substring(6, 12);
+    }
+
     /* Initialize MQTT module */
     log_i("MqData init");
     mqdata.setConfig(db.mqdata.username.c_str(), db.mqdata.password.c_str(), 
