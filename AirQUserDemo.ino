@@ -213,7 +213,7 @@ void setup() {
 
     log_i("Screen init");
     lcd.begin();
-    lcd.setEpdMode(epd_mode_t::epd_text);
+    lcd.setEpdMode(epd_mode_t::epd_fastest);
     // lcd.sleep();
 
     statusView.begin();
