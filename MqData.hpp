@@ -21,14 +21,14 @@ public:
 	bool disconnect();
 
 private:
-
 	bool _public = false;
 	String _device_token = "";
-	const char *_username;
-	const char *_password;
-	const char *_host;
-	int   _port;
-	char *_topic;
+	const char *_username = NULL;
+	const char *_password = NULL;
+	const char *_host = NULL;
+	int   _port = 0;
+	char *_topic = NULL;
+	char *_clientid = NULL;
 };
 
 bool login(const String &loginName, const String &password, String &deviceToken);

@@ -42,6 +42,14 @@ void MqData::setConfig(const char *username, const char *password, const char *h
 	_host = host;
 	_port = port;
 
+	/* calculate clientid string */
+	if (_clientid) { free(_clientid); }
+	const char *clientid_prefix="ClientID-";
+	c=strlen(clientid_prefix) + strlen(mac) + 1;
+	_clientid=(char *)malloc(c);
+	snprintf(_clientid, c, "%s%s", clientid_prefix, mac);
+	_clientid[c]='\0';
+
 	/* calculate topic string */
 	if (_topic) { free(_topic); }
 	c=strlen(topic_prefix) + 1 + strlen(mac) + 1;
@@ -50,7 +58,8 @@ void MqData::setConfig(const char *username, const char *password, const char *h
 	_topic[c]='\0';
 
 	log_i("MQTT Config: user=%s, pass=%s, host=%s, port=%d",
-		username, password, host, port);
+		_username, _password, _host, _port);
+	log_i("MQTT Config: clientid=[%s]", _clientid);
 	log_i("MQTT Config: topic=[%s]", _topic);
 
 	return;
@@ -65,8 +74,9 @@ bool MqData::connect() {
 	}
 
 	mqtt_client.setServer(_host, _port);
-	log_d("MQTT trying to connect to %s:%d [%s]...", _host, _port, _username);
-	while ((c++ < 3) && (!mqtt_client.connect("ClientID-MAC", _username, _password))) {
+	log_d("MQTT trying to connect to %s:%d [%s/%s]...", _host, _port, _username, _password);
+	log_d("  ClientID: %s", _clientid);
+	while ((c++ < 3) && (!mqtt_client.connect(_clientid, _username, _password))) {
 		delay(1000);
 		log_d("MQTT re-trying to connect...");
 	}
