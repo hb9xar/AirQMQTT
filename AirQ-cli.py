@@ -5,10 +5,13 @@ import json
 
 # Example:
 # $ ./AirQ-cli.py 192.168.131.112 '{"config":{"rtc":{"sleep_interval": 60}}}'
+# pass config JSON via STDIN:
+# $ echo '{"config":{"rtc":{"sleep_interval": 60}}}' | ./AirQ-cli.py 192.168.131.112 -
+# $ cat config.json | ./AirQ-cli.py 192.168.131.112 -
 
 
 if (len(sys.argv) <= 1):
-    print(sys.argv[0] + " <AirQ-IP> [config-JSON]")
+    print(sys.argv[0] + " <AirQ-IP> [config-JSON | -]")
     exit(1)
 
 if (len(sys.argv) > 1):
@@ -19,6 +22,11 @@ post=0
 if (len(sys.argv) > 2):
     post=1
     airq_cfgdata=sys.argv[2]
+
+    # if '-', read from STDIN
+    if airq_cfgdata == '-':
+        airq_cfgdata = sys.stdin.read()
+
     try:
         json.loads(airq_cfgdata)
     except ValueError as e:
@@ -33,17 +41,12 @@ if (post):
 else:
     response = requests.get(url)
 
-print (response.status_code)
+print ("API call status: {0}".format(response.status_code))
 
 if(response.ok):
-
-    # Loading the response data into a dict variable
-    # json.loads takes in only binary or string variables so using content to fetch binary content
-    # Loads (Load String) takes a Json file and converts into python data structure (dict or list, depending on JSON)
     jData = json.loads(response.content)
 
-    print("The response contains {0} properties".format(len(jData)))
-    print("\n")
+    print("Response:".format(len(jData)))
     print(json.dumps(jData, indent=2))
 else:
   # If response code is not ok (200), print the resulting http error code with description
