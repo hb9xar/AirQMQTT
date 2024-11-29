@@ -18,6 +18,10 @@
 
 #define USER_BUTTON_POWER 42
 
+// RGB LED on Stamp S3
+#define LED_PIN  21
+#define NUM_LEDS  1
+
 #define EPD_MOSI 6
 #define EPD_MISO -1
 #define EPD_SCLK 5

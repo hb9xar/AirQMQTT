@@ -7,6 +7,7 @@
 #include <WiFi.h>
 #include <esp_sntp.h>
 #include <freertos/queue.h>
+#include <FastLED.h>
 
 #include "I2C_BM8563.h"
 #include <SensirionI2CScd4x.h>
@@ -24,6 +25,7 @@
 #include "Sensor.hpp"
 #include "AppWeb.hpp"
 
+CRGB leds[NUM_LEDS];
 
 class AirQ_GFX : public lgfx::LGFX_Device {
     lgfx::Panel_GDEW0154D67 _panel_instance;
@@ -193,6 +195,20 @@ void setup() {
         pinMode(SEN55_POWER_EN, OUTPUT);
         digitalWrite(SEN55_POWER_EN, LOW);
     }
+
+    log_i("Initialize RGB LED");
+    FastLED.addLeds<WS2812, LED_PIN, GRB>(leds, NUM_LEDS);
+    leds[0] = CRGB::Red;
+    FastLED.show();
+    delay(100);
+    leds[0] = CRGB::Green;
+    FastLED.show();
+    delay(100);
+    leds[0] = CRGB::Blue;
+    FastLED.show();
+    delay(100);
+    FastLED.clear();
+    FastLED.show();
 
     log_i("LittleFS init");
     if (FORMAT_FILESYSTEM) {
