@@ -5,7 +5,7 @@
 #include <M5Unified.h>
 #include <lgfx/v1/panel/Panel_GDEW0154D67.hpp>
 #include <WiFi.h>
-#include <sntp.h>
+#include <esp_sntp.h>
 #include <freertos/queue.h>
 
 #include "I2C_BM8563.h"
