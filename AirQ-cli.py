@@ -11,7 +11,15 @@ import json
 
 
 if (len(sys.argv) <= 1):
+    print('\nSimple AirQ config utility')
+    print('\nUsage:')
     print(sys.argv[0] + " <AirQ-IP> [config-JSON | -]")
+    print('\nGet configuration:')
+    print('$ ./AirQ-cli.py 192.168.131.112')
+    print('\nSet Configuration:')
+    print('$ ./AirQ-cli.py 192.168.131.112 \'{"config":{"rtc":{"sleep_interval": 60}}}\'')
+    print('$ cat config.json | ./AirQ-cli.py 192.168.131.112 -')
+    print()
     exit(1)
 
 if (len(sys.argv) > 1):
