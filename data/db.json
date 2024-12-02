@@ -18,7 +18,7 @@
             "port": 1884,
             "username": "rw",
             "password": "readwrite",
-            "topicPrefix": "gdc/m5/AirQ"
+            "topicPrefix": "your/AirQ/topic/prefix"
         },
         "buzzer": {
             "mute": false
