@@ -1345,10 +1345,6 @@ void countdownServiceTask() {
         cur = esp_timer_get_time() / 1000;
     }
 
-    // if (ezdataState == E_EZDATA_STATE_SUCCESS) {
-    //     shutdown();
-    // }
-
 }
 
 
