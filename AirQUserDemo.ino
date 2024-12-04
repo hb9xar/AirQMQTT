@@ -1263,6 +1263,7 @@ bool uploadSensorRawData(void) {
     cJSON_AddNumberToObject(profileObject, "rssi", WiFi.RSSI());
     cJSON_AddStringToObject(profileObject, "IP",   WiFi.localIP().toString().c_str());
     cJSON_AddNumberToObject(profileObject, "Vbat", ((float)sensor.battery.raw / 1000) * 2);
+    cJSON_AddStringToObject(profileObject, "version", APP_VERSION "-" GIT_COMMIT "-" BUILD_DATE);
 
 
     t = bm8563ToTime(bm8563);
