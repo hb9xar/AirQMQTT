@@ -358,6 +358,7 @@ static void postConfig() {
     cJSON *wifiObject = NULL;
     cJSON *rtcObject = NULL;
     cJSON *ntpObject = NULL;
+    cJSON *mqdataObject = NULL;
     cJSON *buzzerObject = NULL;
     cJSON *nicknameObject = NULL;
     bool flag = false;
@@ -412,6 +413,38 @@ static void postConfig() {
             );
         }
     }
+
+//&&&+++
+//&&& mqdata object
+    mqdataObject = cJSON_GetObjectItem(configObject, "mqdata");
+    if (mqdataObject) {
+        // server
+        cJSON *mqttServerObject = cJSON_GetObjectItem(mqdataObject, "server");
+        if (mqttServerObject && mqttServerObject->valuestring) {
+            db.mqdata.server = String(mqttServerObject->valuestring);
+        }
+        // port
+        cJSON *mqttPortObject = cJSON_GetObjectItem(mqdataObject, "port");
+        if (mqttPortObject && mqttPortObject->valueint) {
+            db.mqdata.port = mqttPortObject->valueint;
+        }
+        // username
+        cJSON *mqttUsernameObject = cJSON_GetObjectItem(mqdataObject, "username");
+        if (mqttUsernameObject && mqttUsernameObject->valuestring) {
+            db.mqdata.username = String(mqttUsernameObject->valuestring);
+        }
+        // password
+        cJSON *mqttPasswordObject = cJSON_GetObjectItem(mqdataObject, "password");
+        if (mqttPasswordObject && mqttPasswordObject->valuestring) {
+            db.mqdata.password = String(mqttPasswordObject->valuestring);
+        }
+        // topicPrefix
+        cJSON *mqttTopicPrefixObject = cJSON_GetObjectItem(mqdataObject, "topicPrefix");
+        if (mqttTopicPrefixObject && mqttTopicPrefixObject->valuestring) {
+            db.mqdata.topicPrefix = String(mqttTopicPrefixObject->valuestring);
+        }
+    }
+///&&&---
 
     buzzerObject = cJSON_GetObjectItem(configObject, "buzzer");
     if (buzzerObject) {
