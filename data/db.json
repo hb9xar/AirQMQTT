@@ -20,6 +20,12 @@
             "password": "readwrite",
             "topicPrefix": "your/AirQ/topic/prefix"
         },
+        "mqdata2": {
+            "server": "other.mqttserver.org",
+            "port": 1883,
+            "username": "user",
+            "password": "pass"
+        },
         "buzzer": {
             "mute": false
         },

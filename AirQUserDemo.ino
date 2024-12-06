@@ -253,6 +253,13 @@ void setup() {
                      db.mqdata.server.c_str(), db.mqdata.port, 
                      db.mqdata.topicPrefix.c_str(), mac.c_str());
 
+    if (db.mqdata2.server && (db.mqdata2.server.length() > 0)) {
+        log_i("MqData init - have 2nd MQTT server present");
+        mqdata.setConfig2(db.mqdata2.username.c_str(), db.mqdata2.password.c_str(), 
+                          db.mqdata2.server.c_str(), db.mqdata2.port);
+    }
+
+
     log_i("I2C init");
     //pinMode(GROVE_SDA, OUTPUT);
     //pinMode(GROVE_SCL, OUTPUT);

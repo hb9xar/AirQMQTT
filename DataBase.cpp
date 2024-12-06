@@ -12,6 +12,7 @@ void DataBase::saveToFile() {
     cJSON *rtcObject = NULL;
     cJSON *ntpObject = NULL;
     cJSON *mqdataObject = NULL;
+    cJSON *mqdata2Object = NULL;
     cJSON *buzzerObject = NULL;
     File configfile;
     char *str = NULL;
@@ -64,6 +65,16 @@ void DataBase::saveToFile() {
     cJSON_AddStringToObject(mqdataObject, "password", mqdata.password.c_str());
     cJSON_AddStringToObject(mqdataObject, "topicPrefix", mqdata.topicPrefix.c_str());
 
+    mqdata2Object = cJSON_CreateObject();
+    if (mqdata2Object == NULL) {
+        goto OUT;
+    }
+    cJSON_AddItemToObject(configObject, "mqdata2", mqdata2Object);
+    cJSON_AddStringToObject(mqdata2Object, "server", mqdata2.server.c_str());
+    cJSON_AddNumberToObject(mqdata2Object, "port", mqdata2.port);
+    cJSON_AddStringToObject(mqdata2Object, "username", mqdata2.username.c_str());
+    cJSON_AddStringToObject(mqdata2Object, "password", mqdata2.password.c_str());
+
     buzzerObject = cJSON_CreateObject();
     if (buzzerObject == NULL) {
         goto OUT;
@@ -101,18 +112,16 @@ void DataBase::dump() {
     log_d("    server_1: %s", ntp.ntpServer1.c_str());
     log_d("    tz: %s", ntp.tz.c_str());
 
-    struct {
-        String server;
-        int port;
-        String username;
-        String password;
-        String topicPrefix;
-    } mqdata;
     log_d("  mqdata:");
     log_d("    server: %s:%d", mqdata.server.c_str(), mqdata.port);
     log_d("    username: %s", mqdata.username.c_str());
     log_d("    password: %s", mqdata.password.c_str());
     log_d("    topicPrefix: %s", mqdata.topicPrefix.c_str());
+
+    log_d("  mqdata2:");
+    log_d("    server: %s:%d", mqdata2.server.c_str(), mqdata2.port);
+    log_d("    username: %s", mqdata2.username.c_str());
+    log_d("    password: %s", mqdata2.password.c_str());
 
     log_d("  buzzer:");
     log_d("    onoff: %d", buzzer.onoff);
@@ -177,6 +186,16 @@ void DataBase::loadFromFile(void) {
     mqdata.username = String(usernameObject->valuestring);
     mqdata.password = String(passwordObject->valuestring);
     mqdata.topicPrefix = String(topicPrefixObject->valuestring);
+
+    cJSON *mqdata2Object = cJSON_GetObjectItem(configObject, "mqdata2");
+    cJSON *server2Object = cJSON_GetObjectItem(mqdata2Object, "server");
+    cJSON *port2Object = cJSON_GetObjectItem(mqdata2Object, "port");
+    cJSON *username2Object = cJSON_GetObjectItem(mqdata2Object, "username");
+    cJSON *password2Object = cJSON_GetObjectItem(mqdata2Object, "password");
+    mqdata2.server = String(server2Object->valuestring);
+    mqdata2.port = port2Object->valueint;
+    mqdata2.username = String(username2Object->valuestring);
+    mqdata2.password = String(password2Object->valuestring);
 
     cJSON *buzzerObject = cJSON_GetObjectItem(configObject, "buzzer");
     if (cJSON_IsTrue(cJSON_GetObjectItem(buzzerObject, "mute"))) {

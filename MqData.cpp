@@ -66,6 +66,18 @@ void MqData::setConfig(const char *username, const char *password, const char *h
 }
 
 
+void MqData::setConfig2(const char *username, const char *password, const char *host, 
+                       int port) {
+	int c;
+
+	_username2 = username;
+	_password2 = password;
+	_host2 = host;
+	_port2 = port;
+
+	return;
+}
+
 bool MqData::connect() {
 	uint8_t c=0;
 	if (!WiFi.isConnected()) {
@@ -81,12 +93,25 @@ bool MqData::connect() {
 		log_d("MQTT re-trying to connect...");
 	}
 
+	// fallback to second MQTT server
+	if (!mqtt_client.connected() && _host2 && (strlen(_host2) > 0)) {
+		log_d("switching to 2nd MQTT server");
+		mqtt_client.setServer(_host2, _port2);
+
+		log_d("MQTT trying to connect to %s:%d [%s/%s]...", _host2, _port2, _username2, _password2);
+		log_d("  ClientID: %s", _clientid);
+		c=0;
+		while ((c++ < 3) && (!mqtt_client.connect(_clientid, _username2, _password2))) {
+			delay(1000);
+			log_d("MQTT re-trying to connect...");
+		}
+	}
+
 	if (!mqtt_client.connected()) {
 		log_e("MQTT connecion failed");
 		return false;
 	}
 
-    
 	log_i("Connection established");
 	return true;
 }

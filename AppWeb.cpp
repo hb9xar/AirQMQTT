@@ -359,6 +359,7 @@ static void postConfig() {
     cJSON *rtcObject = NULL;
     cJSON *ntpObject = NULL;
     cJSON *mqdataObject = NULL;
+    cJSON *mqdata2Object = NULL;
     cJSON *buzzerObject = NULL;
     cJSON *nicknameObject = NULL;
     bool flag = false;
@@ -414,8 +415,6 @@ static void postConfig() {
         }
     }
 
-//&&&+++
-//&&& mqdata object
     mqdataObject = cJSON_GetObjectItem(configObject, "mqdata");
     if (mqdataObject) {
         // server
@@ -444,7 +443,30 @@ static void postConfig() {
             db.mqdata.topicPrefix = String(mqttTopicPrefixObject->valuestring);
         }
     }
-///&&&---
+
+    mqdata2Object = cJSON_GetObjectItem(configObject, "mqdata2");
+    if (mqdataObject) {
+        // server
+        cJSON *mqttServer2Object = cJSON_GetObjectItem(mqdata2Object, "server");
+        if (mqttServer2Object && mqttServer2Object->valuestring) {
+            db.mqdata2.server = String(mqttServer2Object->valuestring);
+        }
+        // port
+        cJSON *mqttPort2Object = cJSON_GetObjectItem(mqdata2Object, "port");
+        if (mqttPort2Object && mqttPort2Object->valueint) {
+            db.mqdata2.port = mqttPort2Object->valueint;
+        }
+        // username
+        cJSON *mqttUsername2Object = cJSON_GetObjectItem(mqdata2Object, "username");
+        if (mqttUsername2Object && mqttUsername2Object->valuestring) {
+            db.mqdata2.username = String(mqttUsername2Object->valuestring);
+        }
+        // password
+        cJSON *mqttPassword2Object = cJSON_GetObjectItem(mqdata2Object, "password");
+        if (mqttPassword2Object && mqttPassword2Object->valuestring) {
+            db.mqdata2.password = String(mqttPassword2Object->valuestring);
+        }
+    }
 
     buzzerObject = cJSON_GetObjectItem(configObject, "buzzer");
     if (buzzerObject) {

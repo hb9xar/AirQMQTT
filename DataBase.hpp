@@ -34,6 +34,12 @@ public:
         String topicPrefix;
     } mqdata;
     struct {
+        String server;
+        int port;
+        String username;
+        String password;
+    } mqdata2;
+    struct {
         bool onoff;
     } buzzer;
 
