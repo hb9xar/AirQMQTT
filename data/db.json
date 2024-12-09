@@ -14,14 +14,14 @@
             "tz": "GMT0"
         },
         "mqdata": {
-            "server": "test.mosquitto.org",
-            "port": 1884,
-            "username": "rw",
-            "password": "readwrite",
+            "server": "other.mqttserver.org",
+            "port": 1883,
+            "username": "user",
+            "password": "pass"
             "topicPrefix": "your/AirQ/topic/prefix"
         },
         "mqdata2": {
-            "server": "other.mqttserver.org",
+            "server": "fallback.mqttserver.org",
             "port": 1883,
             "username": "user",
             "password": "pass"
