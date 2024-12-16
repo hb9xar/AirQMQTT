@@ -18,7 +18,7 @@ MqData::MqData() {
 
 	mqtt_client.setClient(net);
 
-	sts = mqtt_client.setBufferSize(MQTT_BUFFER);
+	sts = mqtt_client.setBufferSize(MQTT_MAX_PACKET_SIZE, MQTT_BUFFER);
 	if (sts != true) {
 		log_e("unable to alloate MQTT buffer");
 	}
