@@ -706,12 +706,42 @@ void settingApp(ButtonEvent_t *buttonEvent) {
             lcd.waitDisplay();
         }
 
-        lcd.drawString(mac, 34, 144, &fonts::efontCN_14);
+        // Show additional information
+#define YPOS_ID    131
+#define YPOS_SWVER 145
+#define YPOS_SSID  159
+#define YPOS_IP    173
+#define YPOS_INT   187
+        // clear text window
+        lcd.fillRect(0, YPOS_ID, 200, 200-YPOS_ID, TFT_WHITE);
+        //
+        // ID / MAC
+        lcd.drawString("ID: " + mac, 0, YPOS_ID, &fonts::efontCN_14);
         lcd.waitDisplay();
-        showWiFiSSID();
+        //
+        // Software version
+        lcd.drawString("SW: " GIT_COMMIT, 0, YPOS_SWVER, &fonts::efontCN_14);
+        lcd.waitDisplay();
+        //
+        // SSID
+        String ssid;
+        if (db.wifi.ssid.length() == 0) {
+            ssid="SSID: NOT SET";
+        } else {
+            ssid = "SSID: " + db.wifi.ssid;
+        }
+        splitLongString(ssid, 150, &fonts::efontCN_14);
+        lcd.drawString(ssid, 0, YPOS_SSID, &fonts::efontCN_14);
+        lcd.waitDisplay();
+        //
+        // Current IP address
+        lcd.drawString("IP: " + WiFi.localIP().toString(), 0, YPOS_IP, &fonts::efontCN_14);
+        lcd.waitDisplay();
+        //
+        // Interval
         String intervalString;
         _ctime(db.rtc.sleepInterval, intervalString);
-        lcd.drawString(intervalString, 72, 180, &fonts::efontCN_14);
+        lcd.drawString("Interval: " + intervalString, 0, YPOS_INT, &fonts::efontCN_14);
         lcd.waitDisplay();
 
         refresh = false;
@@ -1438,18 +1468,6 @@ void splitLongString(String &text, int32_t maxWidth, const lgfx::IFont* font) {
     }
 
     text = text.substring(0, end) + "..." + text.substring(start);
-}
-
-
-void showWiFiSSID() {
-    if (db.wifi.ssid.length() == 0) {
-        lcd.drawString("NO SET", 50, 162, &fonts::efontCN_14);
-    } else {
-        String ssid = db.wifi.ssid;
-        splitLongString(ssid, 150, &fonts::efontCN_14);
-        lcd.drawString(ssid, 50, 162, &fonts::efontCN_14);
-    }
-    lcd.waitDisplay();
 }
 
 

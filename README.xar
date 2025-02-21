@@ -19,6 +19,5 @@
   $ pio run --target upload
   $ pio run --target uploadfs
 
-  Flash existig firmware build (without compiling/linking) the project:
-  $ pio run --target nobuild --target upload
-
+  Flash existig firmware build and FS (without compiling/linking) the project:
+  $ pio run --disable-auto-clean --target upload && sleep 2 && pio run --target uploadfs
